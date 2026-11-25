@@ -105,10 +105,10 @@ worldwritable_enabled() {
 }
 
 if [ "$ACTION" = "add" ] && [ -n "$DEVNAME" ] && [ -n "$ID_FS_TYPE" ]; then
-	worldwritable_enabled || exit 0
-
+	# Devices configured in fstab (e.g. nibootfs, niconfig in safemode) are
+	# always mounted; only automounting under /media needs worldwritable.
 	if [ -x "$PMOUNT" ]; then
-		$PMOUNT $DEVNAME 2> /dev/null
+		worldwritable_enabled && $PMOUNT $DEVNAME 2> /dev/null
 	elif [ -x $MOUNT ]; then
     		$MOUNT $DEVNAME 2> /dev/null
 	fi
@@ -132,7 +132,7 @@ if [ "$ACTION" = "add" ] && [ -n "$DEVNAME" ] && [ -n "$ID_FS_TYPE" ]; then
 	# configured in fstab (note the root filesystem can show up as
 	# /dev/root in /proc/mounts, so check the device number too)
 	if expr $MAJOR "*" 256 + $MINOR != `stat -c %d /`; then
-		grep -q "^$DEVNAME " /proc/mounts || automount
+		grep -q "^$DEVNAME " /proc/mounts || { worldwritable_enabled && automount; }
 	fi
 fi
 

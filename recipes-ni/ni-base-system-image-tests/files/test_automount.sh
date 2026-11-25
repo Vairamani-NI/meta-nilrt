@@ -6,6 +6,7 @@ ptest_change_test $(basename "$0" ".sh") "" "Check SystemSettings worldwritable.
 
 NIRTCFG=/usr/local/natinst/bin/nirtcfg
 IMG=$(mktemp /tmp/automount-test.XXXXXX)
+FSTAB_MNT=$(mktemp -d /tmp/automount-fstab.XXXXXX)
 DMNAME="automount-test-$$"
 LOOPDEV=""
 DMDEV=""
@@ -62,6 +63,8 @@ teardown_dm()
 cleanup()
 {
 	teardown_dm
+	sed -i "\|# $DMNAME\$|d" /etc/fstab
+	rmdir "$FSTAB_MNT"
 	rm -f "$IMG"
 	if [ "$ORIG_VALUE" = __unset__ ]; then
 		set_toggle unset
@@ -123,4 +126,16 @@ if run_case unset unmounted; then
 else
 	ptest_fail
 fi
+ptest_report
+
+# Partitions such as nibootfs are mounted through fstab when they appear, so
+# the toggle must not block them.
+ptest_change_subtest 4 "worldwritable.enabled=false: block device in fstab is mounted"
+echo "$DMDEV $FSTAB_MNT auto noauto 0 0 # $DMNAME" >> /etc/fstab
+if run_case false mounted; then
+	ptest_pass
+else
+	ptest_fail
+fi
+sed -i "\|# $DMNAME\$|d" /etc/fstab
 ptest_report
